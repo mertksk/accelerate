@@ -1,0 +1,45 @@
+import React from 'react';
+import { 
+    Activity, 
+    Box, 
+    CheckCircle2, 
+    Clock, 
+    Database, 
+    Layers, 
+    LayoutDashboard, 
+    Lock, 
+    Send, 
+    Server, 
+    ShieldCheck, 
+    Wallet,
+    ArrowRightLeft,
+    Cpu,
+    FileText,
+    Copy,
+    ExternalLink,
+    RefreshCw
+} from 'lucide-react';
+
+export const Icons = {
+    Dashboard: LayoutDashboard,
+    Transaction: ArrowRightLeft,
+    Wallet: Wallet,
+    Layer1: Database,
+    Layer2: Layers,
+    Security: ShieldCheck,
+    Pending: Clock,
+    Success: CheckCircle2,
+    Processing: Activity,
+    Activity: Activity,
+    Block: Box,
+    Send: Send,
+    Server: Server,
+    Lock: Lock,
+    Compute: Cpu,
+    Contract: FileText,
+    Database: Database,
+    Copy: Copy,
+    ExternalLink: ExternalLink,
+    Refresh: RefreshCw,
+    Clock: Clock
+};

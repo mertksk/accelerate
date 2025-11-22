@@ -1,0 +1,5 @@
+{
+  "name": "Casper Accelerate",
+  "description": "A Zero-Knowledge Rollup (ZK-Rollup) Layer 2 scaling solution for the Casper Network, focused on increasing smart contract throughput using Circom and Groth16.",
+  "requestFramePermissions": []
+}
