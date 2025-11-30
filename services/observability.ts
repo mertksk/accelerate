@@ -197,7 +197,7 @@ class ObservabilityService {
         checks.push({
             name: 'Contract Configuration',
             status: config.isConfigured ? 'pass' : 'warn',
-            message: config.isDemoMode ? 'Running in DEMO mode (Hello World contract)' : `Contract: ${config.contractHash}`
+            message: `Contract: ${config.contractHash}`
         });
 
         // 3. Prover Status Check
