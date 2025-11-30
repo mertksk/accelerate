@@ -73,12 +73,11 @@ async function testCasperConfig() {
 
     const config = CasperService.getContractConfig();
     console.log('Contract Config:', config);
+    console.log('Contract Hash:', config.contractHash);
+    console.log('Chain:', config.chainName);
+    console.log('Configured:', config.isConfigured);
 
-    if (config.isDemoMode) {
-        console.log('Running in DEMO MODE (full contract not deployed)');
-    }
-
-    return true;
+    return config.isConfigured;
 }
 
 async function testBatchSubmission() {
