@@ -1,17 +1,27 @@
 [package]
-name = "casper-accelerate-contract"
+name = "casper_accelerate_contract"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-casper-contract = { version = "3.0.0", default-features = false, features = ["contract"] }
-casper-types = { version = "3.0.0", default-features = false }
-serde = { version = "1.0", default-features = false, features = ["derive"] }
-serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+casper-contract = { version = "5", default-features = false }
+casper-types = { version = "6", default-features = false }
+wee_alloc = "0.4.5"
 
 [lib]
 crate-type = ["cdylib"]
+path = "lib_full_v6.rs"
 
-[[bin]]
-name = "casper-accelerate-client"
-path = "client.rs"
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "abort"
+strip = true
+
+# Removed vendored patches to test if they're causing the deserialization issue
+# [patch.crates-io]
+# casper-contract = { path = "vendor/casper-contract-1.4.4" }
+# casper-types = { path = "vendor/casper-types-1.5.0" }
+# serde = { path = "vendor/serde-1.0.228" }
+# serde_core = { path = "vendor/serde_core-1.0.228" }

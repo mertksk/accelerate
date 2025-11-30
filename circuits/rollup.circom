@@ -29,4 +29,5 @@ template ProcessTx() {
     sigCheck <== signature * signature;
 }
 
-component main {public [old_balance, amount, new_balance]} = ProcessTx();
+// Main component for standalone testing - comment out when used as library
+// component main {public [old_balance, amount, new_balance]} = ProcessTx();

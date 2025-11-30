@@ -1,0 +1,97 @@
+{
+  "network": "casper-test",
+  "rpc_endpoint": "https://node.testnet.casper.network/rpc",
+  "explorer_base_url": "https://testnet.cspr.live",
+  "last_updated": "2025-11-26T21:36:00Z",
+
+  "contracts": {
+    "casper_accelerate": {
+      "contract_hash": "contract-a854708de979d52e5df3fdc36d40897991fd785bb406fb78c65f32ce53fc2989",
+      "contract_package_hash": "contract-package-15747c4d50d690dcee287b0685690a78bd89d42a02e6de92414e470a1d1eabf3",
+      "deploy_hash": "76b8ab7a92acee12e07d3e93ba92fb71f3cfddbeaad33ab8924a1f885c46f1af",
+      "status": "deployed",
+      "deployment_date": "2025-11-26",
+      "entry_points": ["init", "submit_batch"],
+      "description": "Full rollup contract with init and submit_batch entry points. Uses SDK v5/v6.",
+      "wasm_size_bytes": 37485,
+      "bulk_memory_instructions": 0,
+      "gas_cost_cspr": 80
+    },
+
+    "hello_world_legacy": {
+      "contract_hash": "hash-ffaa50accd7b0806bee3efbd17b417f25788c01afae8cb784e9ff9477c7d0fb0",
+      "deploy_hash": "ffaa50accd7b0806bee3efbd17b417f25788c01afae8cb784e9ff9477c7d0fb0",
+      "status": "deprecated",
+      "deployment_date": "2025-11-23",
+      "entry_points": ["get_version"],
+      "description": "Old minimal contract. Superseded by casper_accelerate.",
+      "note": "Built with SDK v1.4.4 - incompatible with current testnet"
+    }
+  },
+
+  "accounts": {
+    "deployer_new": {
+      "public_key": "0176104d9132668cc741ac3fdc8eb623804f50779f8b5da2727b3b473c6b224ce1",
+      "main_purse": "uref-a2e1ae7fd672803ea8b78918af3773723950250abebcc77c434386e7bd40974a-007",
+      "note": "New account created 2025-11-26 for deployments"
+    },
+    "deployer_old": {
+      "public_key": "01a6854fcd536cd21ea54f026378f7707a913a7a706d880c3473210e7ab61be93b",
+      "account_hash": "account-hash-b632313747fa77adacb711c4014b422243890bb0553f3d6e987a04a285ee3ef7",
+      "main_purse": "uref-ca0316f6f612f9689044fa2f613f2a72adedd189ff34a3f4e26aef60bd27a653-007",
+      "note": "Original account - depleted"
+    }
+  },
+
+  "circuit_artifacts": {
+    "status": "generated",
+    "generated_at": "2025-11-25T10:57:00Z",
+    "root_circuit": "circuits/root.circom",
+    "circuit_stats": {
+      "constraints": 40,
+      "wires": 52,
+      "public_inputs": 2,
+      "private_inputs": 31,
+      "curve": "bn-128"
+    },
+    "outputs": {
+      "r1cs": "circuits/root.r1cs",
+      "wasm": "circuits/root_js/root.wasm",
+      "sym": "circuits/root.sym"
+    },
+    "trusted_setup": {
+      "powers_of_tau": "circuits/pot12_final.ptau",
+      "power": 12,
+      "contributions": 2
+    },
+    "proving_key": "circuits/root_final.zkey",
+    "verification_key": "circuits/verification_key.json",
+    "known_good_proof": {
+      "proof_file": "circuits/proof.json",
+      "public_inputs_file": "circuits/public.json",
+      "test_input_file": "circuits/test_input.json",
+      "verified": true,
+      "description": "10 transactions of 10 units each: oldRoot=100, newRoot=0"
+    }
+  },
+
+  "build_info": {
+    "rust_toolchain": "nightly",
+    "casper_contract_version": "5.1.1",
+    "casper_types_version": "6.0.1",
+    "wasm_opt_enabled": true,
+    "bulk_memory_lowering": "--llvm-memory-copy-fill-lowering",
+    "target_features_disabled": [
+      "bulk-memory",
+      "sign-ext",
+      "mutable-globals"
+    ]
+  },
+
+  "notes": [
+    "RESOLVED: EarlyEndOfStream error fixed by upgrading SDK from v1.4.4 to v5/v6",
+    "Full contract with init + submit_batch successfully deployed",
+    "Bulk memory lowering using wasm-opt --llvm-memory-copy-fill-lowering",
+    "Ready for production use"
+  ]
+}

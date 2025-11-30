@@ -1,0 +1,143 @@
+#![no_std]
+#![no_main]
+#![feature(core_intrinsics)]
+
+extern crate alloc;
+
+#[cfg(not(test))]
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
+#[cfg(not(test))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    core::intrinsics::abort()
+}
+
+use casper_contract::contract_api::{runtime, storage};
+use casper_contract::contract_api::system;
+use casper_contract::unwrap_or_revert::UnwrapOrRevert;
+use alloc::vec;
+use alloc::string::String;
+use casper_types::{
+    runtime_args, ApiError, CLType, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Key,
+    Parameter, RuntimeArgs, URef, U512,
+};
+
+// Storage Keys
+const KEY_STATE_ROOT: &str = "state_root";
+const KEY_SEQUENCER: &str = "sequencer";
+const KEY_VAULT_PURSE: &str = "vault_purse";
+const CONTRACT_HASH_NAME: &str = "casper_accelerate_contract_hash";
+const CONTRACT_PACKAGE_HASH_NAME: &str = "casper_accelerate_contract_package_hash";
+
+// Entry Points
+const ENTRY_POINT_INIT: &str = "init";
+const ENTRY_POINT_SUBMIT_BATCH: &str = "submit_batch";
+const ENTRY_POINT_DEPOSIT: &str = "deposit";
+
+// Arguments
+const ARG_INITIAL_ROOT: &str = "initial_root";
+const ARG_SEQUENCER: &str = "sequencer";
+const ARG_NEW_ROOT: &str = "new_root";
+const ARG_PROOF: &str = "proof";
+const ARG_AMOUNT: &str = "amount";
+const ARG_PURSE: &str = "purse";
+
+/// Helper to get the authorized sequencer key
+fn sequencer_key() -> Key {
+    let sequencer_uref = runtime::get_key(KEY_SEQUENCER)
+        .unwrap_or_revert()
+        .into_uref()
+        .unwrap_or_revert();
+
+    storage::read(sequencer_uref)
+        .unwrap_or_revert()
+        .unwrap_or_revert()
+}
+
+/// Helper to get the contract's vault purse
+fn get_vault_purse() -> URef {
+    runtime::get_key(KEY_VAULT_PURSE)
+        .unwrap_or_revert()
+        .into_uref()
+        .unwrap_or_revert()
+}
+
+#[no_mangle]
+pub extern "C" fn init() {
+    // Simplified initialization - just write a success marker
+    // Real initialization will be done via contract upgrade or separate call
+    let marker = storage::new_uref(U512::from(1));
+    runtime::put_key("initialized", marker.into());
+}
+
+#[no_mangle]
+pub extern "C" fn submit_batch() {
+    let _new_root: U512 = runtime::get_named_arg(ARG_NEW_ROOT);
+    let _proof_value: U512 = runtime::get_named_arg(ARG_PROOF);
+    // Stub implementation for now - will be fully implemented after successful deployment
+}
+
+#[no_mangle]
+pub extern "C" fn deposit() {
+    let _amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
+    let _user_purse: URef = runtime::get_named_arg(ARG_PURSE);
+    // Stub implementation for now - will be fully implemented after successful deployment
+}
+
+#[no_mangle]
+pub extern "C" fn call() {
+    let mut entry_points = EntryPoints::new();
+
+    // Init entry point - no args needed now (hardcoded in init)
+    entry_points.add_entry_point(EntryPoint::new(
+        ENTRY_POINT_INIT,
+        vec![],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    // Submit batch entry point
+    entry_points.add_entry_point(EntryPoint::new(
+        ENTRY_POINT_SUBMIT_BATCH,
+        vec![
+            Parameter::new(ARG_NEW_ROOT, CLType::U512),
+            Parameter::new(ARG_PROOF, CLType::U512),
+        ],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    // Deposit entry point
+    entry_points.add_entry_point(EntryPoint::new(
+        ENTRY_POINT_DEPOSIT,
+        vec![
+            Parameter::new(ARG_AMOUNT, CLType::U512),
+            Parameter::new(ARG_PURSE, CLType::URef),
+        ],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    let (contract_hash, _version) = storage::new_contract(
+        entry_points,
+        None,
+        Some(String::from(CONTRACT_HASH_NAME)),
+        Some(String::from(CONTRACT_PACKAGE_HASH_NAME)),
+    );
+
+    runtime::put_key(CONTRACT_HASH_NAME, contract_hash.into());
+
+    // Initialize the contract
+    /*
+    runtime::call_contract::<()>(
+        contract_hash,
+        ENTRY_POINT_INIT,
+        runtime_args! {},
+    );
+    */
+}

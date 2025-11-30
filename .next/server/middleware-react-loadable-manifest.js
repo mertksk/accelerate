@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST="{\"services/mockChain.ts -> ./casperService\":{\"id\":\"services/mockChain.ts -> ./casperService\",\"files\":[]}}"

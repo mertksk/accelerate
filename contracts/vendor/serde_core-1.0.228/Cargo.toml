@@ -1,0 +1,13 @@
+[package]
+name = "serde_core"
+version = "1.0.228"
+edition = "2021"
+build = "build.rs"
+
+[features]
+default = ["std"]
+std = []
+alloc = []
+result = []
+unstable = []
+rc = []

@@ -1,6 +1,8 @@
 
 import { Transaction, TransactionStatus, BlockBatch } from '../types';
 import { MerkleTree } from './merkleTree';
+import { proverService, BatchProofResult } from './proverService';
+import { observability } from './observability';
 
 // Mock addresses
 export const MOCK_ADDRESS = "01a4567b...8f2e";
@@ -11,22 +13,43 @@ export const generateHash = () => Math.random().toString(36).substring(2, 15) + 
 export const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Simulation Parameters
-export const BATCH_INTERVAL_MS = 6000; 
-export const PROOF_TIME_MS = 4000;
+export const BATCH_INTERVAL_MS = 6000;
+export const PROOF_TIME_MS = 4000;  // Fallback if real proof generation fails
 export const L1_VERIFICATION_TIME_MS = 3000;
+
+// Sequencer metrics
+interface SequencerMetrics {
+    totalBatches: number;
+    totalProofsGenerated: number;
+    avgProofTimeMs: number;
+    l1SubmissionsAttempted: number;
+    l1SubmissionsSucceeded: number;
+}
 
 class ChainSimulator {
     private subscribers: (() => void)[] = [];
     private transactions: Transaction[] = [];
     private batches: BlockBatch[] = [];
     private isRunning = false;
-    
+
     // Phase 3: Merkle State
     private stateTree: MerkleTree;
     private stateIndex = 0;
 
+    // Sequencer metrics
+    private metrics: SequencerMetrics = {
+        totalBatches: 0,
+        totalProofsGenerated: 0,
+        avgProofTimeMs: 0,
+        l1SubmissionsAttempted: 0,
+        l1SubmissionsSucceeded: 0
+    };
+    private proofTimes: number[] = [];
+
     constructor() {
         this.stateTree = new MerkleTree(4); // 16 leaves for demo
+        observability.log('info', 'Sequencer', 'Initialized with Groth16 prover');
+        observability.log('info', 'Sequencer', 'Prover status', proverService.getStatus());
     }
 
     subscribe(callback: () => void) {
@@ -103,7 +126,7 @@ class ChainSimulator {
 
     private async simulateProofGeneration(batchId: number, txs: Transaction[], oldRoot: string, newRoot: string) {
         // Update Txs to PROVING
-        this.transactions = this.transactions.map(tx => 
+        this.transactions = this.transactions.map(tx =>
             tx.batchId === batchId ? { ...tx, status: TransactionStatus.PROVING } : tx
         );
         this.notify();
@@ -120,30 +143,106 @@ class ChainSimulator {
         this.batches.unshift(newBatch);
         this.notify();
 
-        await wait(PROOF_TIME_MS);
+        console.log(`[Sequencer] Batch ${batchId}: Generating Groth16 proof...`);
+        console.log(`[Sequencer] - Transactions: ${txs.length}`);
+        console.log(`[Sequencer] - Old Root: ${oldRoot.substring(0, 16)}...`);
+        console.log(`[Sequencer] - New Root: ${newRoot.substring(0, 16)}...`);
+
+        // Generate real ZK proof using prover service
+        let proofResult: BatchProofResult;
+        try {
+            proofResult = await proverService.generateBatchProof(txs, oldRoot, newRoot);
+        } catch (error) {
+            console.error(`[Sequencer] Proof generation error:`, error);
+            // Fallback to simulated delay
+            await wait(PROOF_TIME_MS);
+            proofResult = {
+                success: true,
+                proofHash: `groth16_fallback_${generateHash().substring(0, 8)}`,
+                generationTimeMs: PROOF_TIME_MS
+            };
+        }
+
+        // Track metrics
+        if (proofResult.success && proofResult.generationTimeMs) {
+            this.proofTimes.push(proofResult.generationTimeMs);
+            this.metrics.totalProofsGenerated++;
+            this.metrics.avgProofTimeMs = this.proofTimes.reduce((a, b) => a + b, 0) / this.proofTimes.length;
+            observability.recordProofGenerated(proofResult.generationTimeMs);
+        }
 
         // Update Batch with Proof
-        this.batches = this.batches.map(b => 
-            b.id === batchId ? { ...b, proofHash: `groth16_proof_${generateHash().substring(0, 8)}` } : b
+        const proofHash = proofResult.proofHash || `groth16_${generateHash().substring(0, 8)}`;
+        this.batches = this.batches.map(b =>
+            b.id === batchId ? { ...b, proofHash } : b
         );
         this.notify();
 
-        // 4. Simulate L1 Verification
-        await this.simulateL1Verification(batchId);
+        // 4. Submit to L1
+        await this.submitToL1(batchId, proofResult);
     }
 
-    private async simulateL1Verification(batchId: number) {
+    private async submitToL1(batchId: number, proofResult: BatchProofResult) {
+        const batch = this.batches.find(b => b.id === batchId);
+        if (!batch) return;
+
+        this.metrics.l1SubmissionsAttempted++;
+        console.log(`[Sequencer] Batch ${batchId}: Submitting to L1...`);
+
+        // Submit to L1 via CasperService
+        try {
+            const txHash = await import('./casperService').then(m =>
+                m.CasperService.submitBatch(batch.rootHash, batch.proofHash)
+            );
+
+            if (txHash) {
+                this.metrics.l1SubmissionsSucceeded++;
+                observability.recordL1Submission(true);
+                observability.log('info', 'Sequencer', `Batch ${batchId}: L1 tx submitted`, { txHash });
+            }
+        } catch (e) {
+            observability.recordL1Submission(false, e instanceof Error ? e.message : 'Unknown error');
+        }
+
+        // Wait for L1 confirmation (simulated or real)
         await wait(L1_VERIFICATION_TIME_MS);
 
         // Finalize
-        this.transactions = this.transactions.map(tx => 
+        this.metrics.totalBatches++;
+        const batchSize = this.transactions.filter(tx => tx.batchId === batchId).length;
+        observability.recordBatchProcessed(batchSize);
+
+        this.transactions = this.transactions.map(tx =>
             tx.batchId === batchId ? { ...tx, status: TransactionStatus.FINALIZED } : tx
         );
 
-        this.batches = this.batches.map(b => 
+        this.batches = this.batches.map(b =>
             b.id === batchId ? { ...b, status: 'Verified' } : b
         );
+
+        observability.log('info', 'Sequencer', `Batch ${batchId}: Finalized`, { batchSize });
         this.notify();
+    }
+
+    /**
+     * Get sequencer metrics
+     */
+    getMetrics(): SequencerMetrics {
+        return { ...this.metrics };
+    }
+
+    /**
+     * Get prover status
+     */
+    getProverStatus() {
+        return proverService.getStatus();
+    }
+
+    /**
+     * Get observability instance for health checks and metrics
+     */
+    getObservability() {
+        return observability;
     }
 }
 

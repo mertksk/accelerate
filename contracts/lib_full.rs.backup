@@ -1,0 +1,174 @@
+#![no_std]
+#![no_main]
+#![feature(core_intrinsics)]
+
+extern crate alloc;
+
+#[cfg(not(test))]
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
+#[cfg(not(test))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    core::intrinsics::abort()
+}
+
+use casper_contract::contract_api::{runtime, storage};
+use casper_contract::contract_api::system;
+use casper_contract::unwrap_or_revert::UnwrapOrRevert;
+use alloc::vec;
+use alloc::string::String;
+use casper_types::{
+    contracts::NamedKeys,
+    runtime_args, ApiError, CLType, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Key,
+    Parameter, RuntimeArgs, URef, U512,
+};
+
+// Storage Keys
+const KEY_STATE_ROOT: &str = "state_root";
+const KEY_SEQUENCER: &str = "sequencer";
+const KEY_VAULT_PURSE: &str = "vault_purse";
+const CONTRACT_HASH_NAME: &str = "casper_accelerate_contract_hash";
+const CONTRACT_PACKAGE_HASH_NAME: &str = "casper_accelerate_contract_package_hash";
+
+// Entry Points
+const ENTRY_POINT_INIT: &str = "init";
+const ENTRY_POINT_SUBMIT_BATCH: &str = "submit_batch";
+const ENTRY_POINT_DEPOSIT: &str = "deposit";
+
+// Arguments
+const ARG_INITIAL_ROOT: &str = "initial_root";
+const ARG_SEQUENCER: &str = "sequencer";
+const ARG_NEW_ROOT: &str = "new_root";
+const ARG_PROOF: &str = "proof";
+const ARG_AMOUNT: &str = "amount";
+const ARG_PURSE: &str = "purse";
+
+/// Helper to get the authorized sequencer key
+fn sequencer_key() -> Key {
+    let sequencer_uref = runtime::get_key(KEY_SEQUENCER)
+        .unwrap_or_revert()
+        .into_uref()
+        .unwrap_or_revert();
+
+    storage::read(sequencer_uref)
+        .unwrap_or_revert()
+        .unwrap_or_revert()
+}
+
+/// Helper to get the contract's vault purse
+fn get_vault_purse() -> URef {
+    runtime::get_key(KEY_VAULT_PURSE)
+        .unwrap_or_revert()
+        .into_uref()
+        .unwrap_or_revert()
+}
+
+#[no_mangle]
+pub extern "C" fn init() {
+    // This entry point is kept for compatibility but initialization now happens in call()
+    // If someone tries to call init manually, we just check if already initialized
+    if runtime::get_key(KEY_STATE_ROOT).is_some() {
+        runtime::revert(ApiError::User(3)); // Already initialized
+    }
+    runtime::revert(ApiError::User(4)); // Init should not be called manually
+}
+
+#[no_mangle]
+pub extern "C" fn submit_batch() {
+    let new_root: U512 = runtime::get_named_arg(ARG_NEW_ROOT);
+    let proof_value: U512 = runtime::get_named_arg(ARG_PROOF);
+
+    // Verify sequencer authorization
+    let authorized_sequencer = sequencer_key();
+    if authorized_sequencer != Key::from(runtime::get_caller()) {
+        runtime::revert(ApiError::User(1)); // Unauthorized
+    }
+
+    // Verify ZK proof (placeholder for live verifier integration)
+    // verify_proof(&proof_bytes, &current_root, &new_root).unwrap_or_revert();
+    if proof_value == U512::zero() {
+        runtime::revert(ApiError::User(2)); // Proof too short/invalid
+    }
+
+    // Update state root
+    let root_uref = runtime::get_key(KEY_STATE_ROOT)
+        .unwrap_or_revert()
+        .into_uref()
+        .unwrap_or_revert();
+
+    storage::write(root_uref, new_root);
+}
+
+#[no_mangle]
+pub extern "C" fn deposit() {
+    let amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
+    let user_purse: URef = runtime::get_named_arg(ARG_PURSE);
+
+    // Transfer CSPR from the user's purse into the contract vault
+    let vault_purse = get_vault_purse();
+    system::transfer_from_purse_to_purse(user_purse, vault_purse, amount, None)
+        .unwrap_or_revert();
+    // TODO: emit a Casper event for indexers once integrated.
+}
+
+#[no_mangle]
+pub extern "C" fn call() {
+    let initial_root: U512 = runtime::get_named_arg(ARG_INITIAL_ROOT);
+    let sequencer: Key = runtime::get_named_arg(ARG_SEQUENCER);
+
+    let mut entry_points = EntryPoints::new();
+
+    // Init entry point (no parameters needed since initialization happens in call())
+    entry_points.add_entry_point(EntryPoint::new(
+        ENTRY_POINT_INIT,
+        vec![],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    // Submit batch entry point
+    entry_points.add_entry_point(EntryPoint::new(
+        ENTRY_POINT_SUBMIT_BATCH,
+        vec![
+            Parameter::new(ARG_NEW_ROOT, CLType::U512),
+            Parameter::new(ARG_PROOF, CLType::U512),
+        ],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    // Deposit entry point
+    entry_points.add_entry_point(EntryPoint::new(
+        ENTRY_POINT_DEPOSIT,
+        vec![
+            Parameter::new(ARG_AMOUNT, CLType::U512),
+            Parameter::new(ARG_PURSE, CLType::URef),
+        ],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Contract,
+    ));
+
+    // Initialize storage before creating contract
+    let root_uref = storage::new_uref(initial_root);
+    let seq_uref = storage::new_uref(sequencer);
+
+    // Set up named keys for the contract
+    let mut named_keys = NamedKeys::new();
+    named_keys.insert(String::from(KEY_STATE_ROOT), root_uref.into());
+    named_keys.insert(String::from(KEY_SEQUENCER), seq_uref.into());
+    // Note: vault_purse will be created later when needed to avoid init-time issues
+
+    let (contract_hash, _version) = storage::new_contract(
+        entry_points,
+        Some(named_keys),
+        Some(String::from(CONTRACT_HASH_NAME)),
+        Some(String::from(CONTRACT_PACKAGE_HASH_NAME)),
+    );
+
+    runtime::put_key(CONTRACT_HASH_NAME, contract_hash.into());
+}

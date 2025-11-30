@@ -14,6 +14,7 @@ template RollupBatch(nTx) {
     signal input intermediary_roots[nTx + 1];
 
     component txs[nTx];
+    signal diff[nTx];  // Moved outside the loop - signals must be declared in initial scope
 
     // Verify that the batch starts with the known oldRoot
     intermediary_roots[0] === oldRoot;
@@ -29,8 +30,7 @@ template RollupBatch(nTx) {
 
         // In a real ZK Rollup, we would verify the Merkle Proof for every tx here
         // For this MVP, we verify the sequence of root updates
-        signal diff;
-        diff <== intermediary_roots[i + 1] - intermediary_roots[i];
+        diff[i] <== intermediary_roots[i + 1] - intermediary_roots[i];
 
         // Bind the sender input so it influences the witness
         txs[i].sender_pubkey <== tx_senders[i];

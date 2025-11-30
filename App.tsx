@@ -25,22 +25,26 @@ export default function App() {
             setWallet({
                 address: realAddress,
                 isConnected: true,
-                l1Balance: 15420, // Mock Balance for real address
-                l2Balance: 0      // New user starts with 0 L2 tokens
+                l1Balance: 0, // TODO: Fetch real balance from RPC via CasperService
+                l2Balance: 0
             });
             return;
         }
 
-        // 2. Fallback to Simulation Mode
-        // Simulate connection delay
-        setTimeout(() => {
-            setWallet({
-                address: MOCK_ADDRESS,
-                isConnected: true,
-                l1Balance: 4500, // Mock CSPR
-                l2Balance: 1000  // Mock L2 Token
-            });
-        }, 800);
+        // 2. Fallback to Simulation Mode (only if not explicitly disabled)
+        // In production/testnet, set NEXT_PUBLIC_USE_MOCK=false
+        if (process.env.NEXT_PUBLIC_USE_MOCK !== 'false') {
+            setTimeout(() => {
+                setWallet({
+                    address: MOCK_ADDRESS,
+                    isConnected: true,
+                    l1Balance: 4500, // Mock CSPR
+                    l2Balance: 1000  // Mock L2 Token
+                });
+            }, 800);
+        } else {
+            alert("Please install the Casper Wallet extension to connect.");
+        }
     };
 
     const renderContent = () => {
