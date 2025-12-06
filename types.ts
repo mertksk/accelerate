@@ -13,6 +13,7 @@ export interface Transaction {
     timestamp: number;
     status: TransactionStatus;
     batchId?: number;
+    l1DepositHash?: string;  // L1 deposit transaction hash (for bridged funds)
 }
 
 export interface BlockBatch {
@@ -22,6 +23,7 @@ export interface BlockBatch {
     proofHash: string;
     status: 'Processing' | 'Verified';
     timestamp: number;
+    l1TxHash?: string;  // L1 batch submission transaction hash
 }
 
 export interface WalletState {

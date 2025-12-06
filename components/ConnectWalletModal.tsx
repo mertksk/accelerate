@@ -1,36 +1,63 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Icons } from './Icons';
 
 interface ConnectWalletModalProps {
     isOpen: boolean;
     onClose: () => void;
     onConnect: () => void;
+    connectionError?: string | null;
 }
 
-export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, onClose, onConnect }) => {
+export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, onClose, onConnect, connectionError }) => {
+    const [isConnecting, setIsConnecting] = useState(false);
+
     if (!isOpen) return null;
 
-    const handleConnect = () => {
-        onConnect();
+    const handleConnect = async () => {
+        setIsConnecting(true);
+        await onConnect();
+        setIsConnecting(false);
+        // Don't close modal - let parent handle it on success
+    };
+
+    const handleClose = () => {
+        setIsConnecting(false);
         onClose();
     };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose}></div>
             <div className="relative bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-6 animate-fade-in-up">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-xl font-bold text-white">Connect Wallet</h3>
-                    <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+                    <button onClick={handleClose} className="text-slate-500 hover:text-white transition-colors">
                         <Icons.Refresh className="w-5 h-5 rotate-45" />
                     </button>
                 </div>
 
+                {connectionError && (
+                    <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-400">
+                        {connectionError}
+                        {connectionError.includes('not installed') && (
+                            <a
+                                href="https://www.casperwallet.io/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block mt-2 text-red-500 hover:text-red-400 underline"
+                            >
+                                Download Casper Wallet Extension
+                            </a>
+                        )}
+                    </div>
+                )}
+
                 <div className="space-y-3">
-                    <button 
+                    <button
                         onClick={handleConnect}
-                        className="w-full flex items-center justify-between p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-xl group transition-all"
+                        disabled={isConnecting}
+                        className="w-full flex items-center justify-between p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-xl group transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
@@ -38,13 +65,19 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({ isOpen, 
                             </div>
                             <div className="text-left">
                                 <div className="font-bold text-white">Casper Wallet</div>
-                                <div className="text-xs text-slate-400">Official Browser Extension</div>
+                                <div className="text-xs text-slate-400">
+                                    {isConnecting ? 'Connecting...' : 'Official Browser Extension'}
+                                </div>
                             </div>
                         </div>
-                        <div className="w-4 h-4 rounded-full border-2 border-slate-600 group-hover:border-red-500 group-hover:bg-red-500 transition-colors"></div>
+                        {isConnecting ? (
+                            <Icons.Refresh className="w-4 h-4 text-slate-400 animate-spin" />
+                        ) : (
+                            <div className="w-4 h-4 rounded-full border-2 border-slate-600 group-hover:border-red-500 group-hover:bg-red-500 transition-colors"></div>
+                        )}
                     </button>
 
-                    <button 
+                    <button
                         disabled
                         className="w-full flex items-center justify-between p-4 bg-slate-800/20 border border-slate-800 rounded-xl opacity-50 cursor-not-allowed"
                     >

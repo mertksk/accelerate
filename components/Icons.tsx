@@ -1,23 +1,24 @@
 import React from 'react';
-import { 
-    Activity, 
-    Box, 
-    CheckCircle2, 
-    Clock, 
-    Database, 
-    Layers, 
-    LayoutDashboard, 
-    Lock, 
-    Send, 
-    Server, 
-    ShieldCheck, 
+import {
+    Activity,
+    Box,
+    CheckCircle2,
+    Clock,
+    Database,
+    Layers,
+    LayoutDashboard,
+    Lock,
+    Send,
+    Server,
+    ShieldCheck,
     Wallet,
     ArrowRightLeft,
     Cpu,
     FileText,
     Copy,
     ExternalLink,
-    RefreshCw
+    RefreshCw,
+    LogOut
 } from 'lucide-react';
 
 export const Icons = {
@@ -41,5 +42,6 @@ export const Icons = {
     Copy: Copy,
     ExternalLink: ExternalLink,
     Refresh: RefreshCw,
-    Clock: Clock
+    Clock: Clock,
+    Logout: LogOut
 };

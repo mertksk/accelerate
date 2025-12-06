@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from './Icons';
 import { WalletState } from '../types';
 import { ConnectWalletModal } from './ConnectWalletModal';
@@ -11,11 +11,20 @@ interface HeaderProps {
     setActiveTab: (tab: TabKey) => void;
     wallet: WalletState;
     onConnect: () => void;
+    onDisconnect?: () => void;
+    connectionError?: string | null;
 }
 
-export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, wallet, onConnect }) => {
+export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, wallet, onConnect, onDisconnect, connectionError }) => {
     const [copied, setCopied] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Auto-close modal when wallet connects successfully
+    useEffect(() => {
+        if (wallet.isConnected && isModalOpen) {
+            setIsModalOpen(false);
+        }
+    }, [wallet.isConnected, isModalOpen]);
 
     const copyAddress = () => {
         if (wallet.address) {
@@ -84,6 +93,15 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, wallet,
                                 <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-600 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-red-900/20">
                                     {wallet.address?.substring(2,4).toUpperCase()}
                                 </div>
+                                {onDisconnect && (
+                                    <button
+                                        onClick={onDisconnect}
+                                        className="ml-2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-700/50 rounded-full transition-colors"
+                                        title="Disconnect wallet"
+                                    >
+                                        <Icons.Logout className="w-4 h-4" />
+                                    </button>
+                                )}
                             </div>
                         ) : (
                             <button 
@@ -98,10 +116,11 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, wallet,
                 </div>
             </header>
 
-            <ConnectWalletModal 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
-                onConnect={onConnect} 
+            <ConnectWalletModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onConnect={onConnect}
+                connectionError={connectionError}
             />
         </>
     );

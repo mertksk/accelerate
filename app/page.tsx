@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { Home } from '@/views/Home';
 import { Dashboard } from '@/views/Dashboard';
 import { Architecture } from '@/views/Architecture';
 import { WalletState } from '@/types';
-import { MOCK_ADDRESS } from '@/services/mockChain';
 import { CasperService } from '@/services/casperService';
 
 export default function Page() {
@@ -17,31 +16,67 @@ export default function Page() {
     l1Balance: 0,
     l2Balance: 0
   });
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+
+  // Fetch balance for connected wallet
+  const refreshBalance = useCallback(async (address: string) => {
+    const balances = await CasperService.getBalance(address);
+    if (balances) {
+      setWallet(prev => ({
+        ...prev,
+        l1Balance: balances.l1Balance,
+        l2Balance: balances.l2Balance
+      }));
+    }
+  }, []);
+
+  // Periodic balance refresh (every 30s)
+  useEffect(() => {
+    if (!wallet.isConnected || !wallet.address) return;
+
+    const interval = setInterval(() => {
+      refreshBalance(wallet.address!);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [wallet.isConnected, wallet.address, refreshBalance]);
 
   const connectWallet = async () => {
-    // 1. Try Real Casper Wallet Connection
-    const realAddress = await CasperService.connect();
+    setConnectionError(null);
 
-    if (realAddress) {
-      setWallet({
-        address: realAddress,
-        isConnected: true,
-        l1Balance: 15420, // Mock Balance for real address
-        l2Balance: 0      // New user starts with 0 L2 tokens
-      });
+    // Check if Casper Wallet extension is installed
+    if (!CasperService.isInstalled()) {
+      setConnectionError('Casper Wallet not installed. Please install the browser extension.');
       return;
     }
 
-    // 2. Fallback to Simulation Mode
-    // Simulate connection delay
-    setTimeout(() => {
-      setWallet({
-        address: MOCK_ADDRESS,
-        isConnected: true,
-        l1Balance: 4500, // Mock CSPR
-        l2Balance: 1000  // Mock L2 Token
-      });
-    }, 800);
+    // Connect to Casper Wallet
+    const realAddress = await CasperService.connect();
+
+    if (!realAddress) {
+      setConnectionError('Connection failed. Please try again.');
+      return;
+    }
+
+    // Fetch real balance
+    const balances = await CasperService.getBalance(realAddress);
+
+    setWallet({
+      address: realAddress,
+      isConnected: true,
+      l1Balance: balances?.l1Balance ?? 0,
+      l2Balance: balances?.l2Balance ?? 0
+    });
+  };
+
+  const disconnectWallet = () => {
+    setWallet({
+      address: null,
+      isConnected: false,
+      l1Balance: 0,
+      l2Balance: 0
+    });
+    setConnectionError(null);
   };
 
   const renderContent = () => {
@@ -64,6 +99,8 @@ export default function Page() {
         setActiveTab={setActiveTab}
         wallet={wallet}
         onConnect={connectWallet}
+        onDisconnect={disconnectWallet}
+        connectionError={connectionError}
       />
 
       <main className="container mx-auto px-4 py-6">

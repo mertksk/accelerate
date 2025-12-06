@@ -2,19 +2,31 @@
   "network": "casper-test",
   "rpc_endpoint": "https://node.testnet.casper.network/rpc",
   "explorer_base_url": "https://testnet.cspr.live",
-  "last_updated": "2025-11-26T21:36:00Z",
+  "last_updated": "2025-12-04T22:35:00Z",
 
   "contracts": {
-    "casper_accelerate": {
+    "casper_accelerate_v2": {
+      "contract_hash": "hash-28f1ff0df38e34c30f9ca3e11c8ae704babe90d7885f93d6afde93aaa8f96b0d",
+      "contract_package_hash": "contract-package-3e3e458f59228c8a29e3b9151d89b535b76326ae10b43115b6abe419799f121f",
+      "deploy_hash": "b0680f527a063e2af150ba4032295726edb5e9550dbcb6d66e7fea7e84bc1a50",
+      "status": "deployed",
+      "deployment_date": "2025-12-04",
+      "entry_points": ["init", "deposit", "withdraw", "submit_batch", "get_state"],
+      "description": "Full ZK-Rollup contract with deposit/withdraw/submit_batch entry points. Production ready.",
+      "wasm_size_bytes": 42560,
+      "bulk_memory_instructions": 0,
+      "gas_cost_cspr": 100
+    },
+
+    "casper_accelerate_v1": {
       "contract_hash": "contract-a854708de979d52e5df3fdc36d40897991fd785bb406fb78c65f32ce53fc2989",
       "contract_package_hash": "contract-package-15747c4d50d690dcee287b0685690a78bd89d42a02e6de92414e470a1d1eabf3",
       "deploy_hash": "76b8ab7a92acee12e07d3e93ba92fb71f3cfddbeaad33ab8924a1f885c46f1af",
-      "status": "deployed",
+      "status": "deprecated",
       "deployment_date": "2025-11-26",
       "entry_points": ["init", "submit_batch"],
-      "description": "Full rollup contract with init and submit_batch entry points. Uses SDK v5/v6.",
+      "description": "First version - missing deposit/withdraw. Superseded by v2.",
       "wasm_size_bytes": 37485,
-      "bulk_memory_instructions": 0,
       "gas_cost_cspr": 80
     },
 
@@ -89,9 +101,9 @@
   },
 
   "notes": [
-    "RESOLVED: EarlyEndOfStream error fixed by upgrading SDK from v1.4.4 to v5/v6",
-    "Full contract with init + submit_batch successfully deployed",
-    "Bulk memory lowering using wasm-opt --llvm-memory-copy-fill-lowering",
-    "Ready for production use"
+    "v2 contract deployed with full entry points: init, deposit, withdraw, submit_batch, get_state",
+    "Contract needs init() to be called before use",
+    "All mock functionality removed - production ready",
+    "Bulk memory lowering using wasm-opt --llvm-memory-copy-fill-lowering"
   ]
 }

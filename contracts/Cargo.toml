@@ -12,6 +12,12 @@ wee_alloc = "0.4.5"
 crate-type = ["cdylib"]
 path = "lib_full_v6.rs"
 
+[[bin]]
+name = "client_deposit"
+path = "client_deposit.rs"
+test = false
+doc = false
+
 [profile.release]
 codegen-units = 1
 lto = true
