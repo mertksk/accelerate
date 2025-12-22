@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { Icons } from './Icons';
-import { chainSimulator } from '../services/mockChain';
 import { CasperService } from '../services/casperService';
 import { WalletState } from '../types';
 
 interface TransactionFormProps {
     wallet: WalletState;
     onDepositSuccess?: () => void;
+    onTransactionSubmit?: (from: string, to: string, amount: number) => Promise<void>;
 }
 
 type FormMode = 'deposit' | 'transfer';
 
-export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepositSuccess }) => {
+export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepositSuccess, onTransactionSubmit }) => {
     const [mode, setMode] = useState<FormMode>('deposit');
     const [to, setTo] = useState('');
     const [amount, setAmount] = useState('');
@@ -46,8 +46,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
                 link: explorerUrl
             });
 
-            // Also add to L2 sequencer for tracking
-            chainSimulator.addTransaction('L1_DEPOSIT', wallet.address || '', val);
+            // Also add to L2 sequencer for tracking via API
+            if (onTransactionSubmit) {
+                await onTransactionSubmit('L1_DEPOSIT', wallet.address || '', val);
+            }
 
             // Notify parent to refresh balances
             onDepositSuccess?.();
@@ -57,9 +59,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
     };
 
     const handleTransfer = async (val: number) => {
-        // L2 transfer via sequencer
-        chainSimulator.addTransaction(wallet.address || '0xUnknown', to, val);
-        setFeedback({ type: 'success', msg: 'Transaction Signed & Submitted to Sequencer' });
+        // L2 transfer via API
+        if (onTransactionSubmit) {
+            await onTransactionSubmit(wallet.address || '0xUnknown', to, val);
+            setFeedback({ type: 'success', msg: 'Transaction Signed & Submitted to Sequencer' });
+        } else {
+            setFeedback({ type: 'error', msg: 'Transaction submission not available' });
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {

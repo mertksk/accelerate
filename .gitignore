@@ -1,3 +1,11 @@
+# ZK Circuits
+*.ptau
+*.zkey
+*.r1cs
+*.sym
+*_js/
+*.wtns
+
 # Logs
 logs
 *.log
@@ -11,6 +19,15 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*.local
+
+# Next.js
+.next/
+out/
+
+# Rust/Cargo
+target/
 
 # Editor directories and files
 .vscode/*

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Icons } from './Icons';
 import { Transaction, BlockBatch, TransactionStatus } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -9,6 +9,12 @@ interface StatsPanelProps {
 }
 
 export const StatsPanel: React.FC<StatsPanelProps> = ({ transactions, batches }) => {
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
     const stats = useMemo(() => {
         const total = transactions.length;
         const pending = transactions.filter(t => t.status === TransactionStatus.PENDING).length;
@@ -68,22 +74,28 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({ transactions, batches })
             {/* Card 4: Batch Visualizer */}
             <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl relative overflow-hidden">
                 <div className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Batch Capacity</div>
-                <div className="h-16 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData}>
-                             <XAxis dataKey="name" hide />
-                            <Tooltip 
-                                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '12px' }}
-                                itemStyle={{ color: '#fff' }}
-                                cursor={{fill: 'transparent'}}
-                            />
-                            <Bar dataKey="txs" radius={[4, 4, 0, 0]}>
-                                {chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.status === 'Verified' ? '#22c55e' : '#eab308'} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
+                <div style={{ width: '100%', height: 64, minWidth: 100, minHeight: 64 }}>
+                    {isMounted && chartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={64} minWidth={100}>
+                            <BarChart data={chartData}>
+                                <XAxis dataKey="name" hide />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', fontSize: '12px' }}
+                                    itemStyle={{ color: '#fff' }}
+                                    cursor={{fill: 'transparent'}}
+                                />
+                                <Bar dataKey="txs" radius={[4, 4, 0, 0]}>
+                                    {chartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.status === 'Verified' ? '#22c55e' : '#eab308'} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="h-full flex items-center justify-center text-slate-600 text-xs">
+                            {isMounted ? 'No batch data' : 'Loading...'}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icons } from './Icons';
-import { Transaction, BlockBatch, TransactionStatus } from '../types';
+import { Transaction, BlockBatch } from '../types';
 
 interface FeedProps {
     transactions: Transaction[];
@@ -8,22 +8,26 @@ interface FeedProps {
 }
 
 export const Feed: React.FC<FeedProps> = ({ transactions, batches }) => {
-    
-    const getStatusColor = (status: TransactionStatus) => {
+
+    const getStatusColor = (status: string) => {
         switch (status) {
-            case TransactionStatus.PENDING: return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
-            case TransactionStatus.BATCHED: return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
-            case TransactionStatus.PROVING: return 'text-purple-400 bg-purple-500/10 border-purple-500/20';
-            case TransactionStatus.FINALIZED: return 'text-green-500 bg-green-500/10 border-green-500/20';
+            case 'PENDING': return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
+            case 'BATCHED': return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+            case 'PROVING': return 'text-purple-400 bg-purple-500/10 border-purple-500/20';
+            case 'FINALIZED': return 'text-green-500 bg-green-500/10 border-green-500/20';
+            case 'FAILED': return 'text-red-500 bg-red-500/10 border-red-500/20';
+            default: return 'text-slate-500 bg-slate-500/10 border-slate-500/20';
         }
     };
 
-    const getStatusIcon = (status: TransactionStatus) => {
+    const getStatusIcon = (status: string) => {
         switch (status) {
-            case TransactionStatus.PENDING: return Icons.Pending;
-            case TransactionStatus.BATCHED: return Icons.Block;
-            case TransactionStatus.PROVING: return Icons.Compute;
-            case TransactionStatus.FINALIZED: return Icons.Security;
+            case 'PENDING': return Icons.Pending;
+            case 'BATCHED': return Icons.Block;
+            case 'PROVING': return Icons.Compute;
+            case 'FINALIZED': return Icons.Security;
+            case 'FAILED': return Icons.Security;
+            default: return Icons.Pending;
         }
     };
 
@@ -51,8 +55,8 @@ export const Feed: React.FC<FeedProps> = ({ transactions, batches }) => {
                                         <StatusIcon className="w-4 h-4" />
                                     </div>
                                     <div>
-                                        <div className="text-sm font-mono text-slate-200">{tx.id}</div>
-                                        <div className="text-xs text-slate-500">{tx.from.substring(0, 6)}... → {tx.to.substring(0, 6)}...</div>
+                                        <div className="text-sm font-mono text-slate-200">{tx.id?.substring(0, 16) || 'Unknown'}...</div>
+                                        <div className="text-xs text-slate-500">{(tx.from || '0x0').substring(0, 8)}... → {(tx.to || '0x0').substring(0, 8)}...</div>
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -84,7 +88,7 @@ export const Feed: React.FC<FeedProps> = ({ transactions, batches }) => {
                             <div className="flex justify-between items-start mb-3">
                                 <div>
                                     <div className="text-xs text-slate-400 font-mono mb-1">BATCH #{batch.id}</div>
-                                    <div className="text-sm text-white font-mono break-all">{batch.rootHash.substring(0, 20)}...</div>
+                                    <div className="text-sm text-white font-mono break-all">{(batch.rootHash || '0x0').substring(0, 20)}...</div>
                                 </div>
                                 <span className={`text-xs px-2 py-1 rounded font-medium ${batch.status === 'Verified' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
                                     {batch.status}

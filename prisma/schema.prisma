@@ -1,0 +1,121 @@
+// Casper Accelerate ZK-Rollup Database Schema
+// Production persistence with Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id           String   @id @default(cuid())
+  address      String   @unique
+  treeIndex    Int      @unique  // Position in Merkle tree (0-65535)
+  balance      BigInt   @default(0)
+  nonce        BigInt   @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sentTx       Transaction[] @relation("Sender")
+  receivedTx   Transaction[] @relation("Receiver")
+
+  @@index([address])
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  txHash        String   @unique  // 0x...
+  fromAddress   String
+  toAddress     String
+  amount        BigInt
+  status        TransactionStatus @default(PENDING)
+
+  batchId       Int?
+  batch         Batch?   @relation(fields: [batchId], references: [id])
+
+  sender        Account  @relation("Sender", fields: [fromAddress], references: [address])
+  receiver      Account  @relation("Receiver", fields: [toAddress], references: [address])
+
+  l1DepositHash String?  // If this was an L1 deposit
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+  @@index([batchId])
+  @@index([fromAddress])
+  @@index([toAddress])
+}
+
+enum TransactionStatus {
+  PENDING
+  BATCHED
+  PROVING
+  FINALIZED
+  FAILED
+}
+
+model Batch {
+  id            Int      @id @default(autoincrement())
+  oldRoot       String   // State root before batch
+  newRoot       String   // State root after batch
+  status        BatchStatus @default(PENDING)
+
+  transactions  Transaction[]
+  proofJob      ProofJob?
+
+  l1TxHash      String?  // L1 submission transaction hash
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+}
+
+enum BatchStatus {
+  PENDING
+  PROVING
+  PROVED
+  SUBMITTING
+  VERIFIED
+  FAILED
+}
+
+model ProofJob {
+  id            String   @id @default(cuid())
+  batchId       Int      @unique
+  batch         Batch    @relation(fields: [batchId], references: [id])
+
+  status        ProofJobStatus @default(QUEUED)
+  progress      Int      @default(0)  // 0-100
+  progressMsg   String?  // "Loading circuit...", "Generating witness...", etc.
+
+  proofData     Json?    // { pi_a, pi_b, pi_c }
+  publicSignals Json?    // [oldRoot, newRoot]
+  proofHash     String?
+
+  startedAt     DateTime?
+  completedAt   DateTime?
+  errorMessage  String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum ProofJobStatus {
+  QUEUED
+  LOADING_CIRCUIT
+  BUILDING_WITNESS
+  GENERATING_PROOF
+  COMPLETED
+  FAILED
+}
+
+model MerkleTreeState {
+  id            String   @id @default("singleton")
+  root          String   // Current state root
+  leafCount     Int      @default(0)
+  treeDepth     Int      @default(16)
+  updatedAt     DateTime @updatedAt
+}

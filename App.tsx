@@ -1,12 +1,13 @@
-
 import React, { useState } from 'react';
 import { Header } from './components/Header';
 import { Home } from './views/Home';
 import { Dashboard } from './views/Dashboard';
 import { Architecture } from './views/Architecture';
 import { WalletState } from './types';
-import { MOCK_ADDRESS } from './services/mockChain';
 import { CasperService } from './services/casperService';
+
+// Fallback address for simulation mode (when wallet is not available)
+const SIMULATION_ADDRESS = "01a4567b...8f2e";
 
 export default function App() {
     const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'architecture'>('home');
@@ -36,10 +37,10 @@ export default function App() {
         if (process.env.NEXT_PUBLIC_USE_MOCK !== 'false') {
             setTimeout(() => {
                 setWallet({
-                    address: MOCK_ADDRESS,
+                    address: SIMULATION_ADDRESS,
                     isConnected: true,
-                    l1Balance: 4500, // Mock CSPR
-                    l2Balance: 1000  // Mock L2 Token
+                    l1Balance: 4500, // Simulation CSPR
+                    l2Balance: 1000  // Simulation L2 Token
                 });
             }, 800);
         } else {
@@ -62,13 +63,13 @@ export default function App() {
 
     return (
         <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-red-500/30">
-            <Header 
-                activeTab={activeTab} 
-                setActiveTab={setActiveTab} 
-                wallet={wallet} 
+            <Header
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                wallet={wallet}
                 onConnect={connectWallet}
             />
-            
+
             <main className="container mx-auto px-4 py-6">
                 {renderContent()}
             </main>
