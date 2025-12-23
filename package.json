@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint"
   },
@@ -15,10 +15,10 @@
     "circomlib": "^2.0.5",
     "circomlibjs": "^0.1.7",
     "lucide-react": "^0.554.0",
-    "next": "^14.2.14",
+    "next": "^16.1.1",
     "prisma": "^5.22.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "recharts": "^3.4.1",
     "snarkjs": "^0.7.4"
   },
@@ -28,8 +28,8 @@
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.20",
     "blakejs": "^1.2.1",
-    "eslint": "^8.57.1",
-    "eslint-config-next": "^14.2.14",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^16.1.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.2"
