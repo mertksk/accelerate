@@ -5,11 +5,12 @@ import { Header } from '@/components/Header';
 import { Home } from '@/views/Home';
 import { Dashboard } from '@/views/Dashboard';
 import { Architecture } from '@/views/Architecture';
+import { UseCases } from '@/views/UseCases';
 import { WalletState } from '@/types';
 import { CasperService } from '@/services/casperService';
 
 export default function Page() {
-  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'architecture'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'architecture' | 'usecases'>('home');
   const [wallet, setWallet] = useState<WalletState>({
     address: null,
     isConnected: false,
@@ -87,6 +88,8 @@ export default function Page() {
         return <Dashboard wallet={wallet} />;
       case 'architecture':
         return <Architecture />;
+      case 'usecases':
+        return <UseCases />;
       default:
         return <Home onConnect={connectWallet} onEnterApp={() => setActiveTab('dashboard')} />;
     }

@@ -725,6 +725,55 @@ export class CasperService {
     }
 
     /**
+     * Withdraw from L2 to L1
+     * Deducts L2 balance and releases funds on L1
+     */
+    static async withdraw(amountMotes: string): Promise<string | null> {
+        console.log(`[CasperService] Constructing withdraw request...`);
+        console.log(`- Amount: ${amountMotes} motes (${Number(amountMotes) / 1e9} CSPR)`);
+
+        const provider = this.getProvider();
+        if (!provider) {
+            console.warn("[CasperService] No wallet connected. Cannot withdraw.");
+            return null;
+        }
+
+        try {
+            const activeKey = await provider.getActivePublicKey();
+            console.log(`[CasperService] Withdrawing to: ${activeKey}`);
+
+            // For MVP: Call the withdraw API endpoint which handles:
+            // 1. Deduct L2 balance
+            // 2. Queue L1 release transaction
+            const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+            const response = await fetch(`${baseUrl}/api/withdraw`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    address: activeKey,
+                    amount: amountMotes
+                })
+            });
+
+            const data = await response.json();
+            console.log("[CasperService] Withdraw response:", data);
+
+            if (data.success && data.withdrawalId) {
+                // Return a pseudo-hash for the withdrawal (actual L1 tx will be processed async)
+                const withdrawHash = `withdraw-${data.withdrawalId}`;
+                console.log(`[CasperService] Withdrawal queued: ${withdrawHash}`);
+                return withdrawHash;
+            }
+
+            console.error("[CasperService] Withdraw failed:", data.error);
+            return null;
+        } catch (error) {
+            console.error("[CasperService] Error withdrawing:", error);
+            return null;
+        }
+    }
+
+    /**
      * Get account balance in CSPR via RPC
      * Returns both L1 and L2 balances
      */

@@ -183,6 +183,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ wallet }) => {
         await createTransaction(from, to, amount);
     };
 
+    // Handle withdrawal from L2 to L1
+    const handleWithdraw = async (address: string, amount: number): Promise<string | null> => {
+        // Convert CSPR/ACCEL to motes
+        const amountMotes = (BigInt(Math.floor(amount * 1e9))).toString();
+        const result = await CasperService.withdraw(amountMotes);
+        if (result) {
+            // Refresh data after withdrawal
+            setTimeout(fetchContractState, 3000);
+            fetchTransactions();
+        }
+        return result;
+    };
+
     const handleDepositSuccess = () => {
         setTimeout(fetchContractState, 3000);
         fetchTransactions();
@@ -307,6 +320,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ wallet }) => {
                         wallet={wallet}
                         onDepositSuccess={handleDepositSuccess}
                         onTransactionSubmit={handleTransactionSubmit}
+                        onWithdrawSubmit={handleWithdraw}
                     />
                 </div>
 

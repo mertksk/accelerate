@@ -4,7 +4,7 @@ import { Icons } from './Icons';
 import { WalletState } from '../types';
 import { ConnectWalletModal } from './ConnectWalletModal';
 
-type TabKey = 'home' | 'dashboard' | 'architecture';
+type TabKey = 'home' | 'dashboard' | 'architecture' | 'usecases';
 
 interface HeaderProps {
     activeTab: TabKey;
@@ -58,11 +58,17 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, wallet,
                         >
                             L2 Dashboard
                         </button>
-                        <button 
+                        <button
                             onClick={() => setActiveTab('architecture')}
                             className={`text-sm font-medium transition-colors ${activeTab === 'architecture' ? 'text-red-500' : 'text-slate-400 hover:text-white'}`}
                         >
                             Architecture
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('usecases')}
+                            className={`text-sm font-medium transition-colors ${activeTab === 'usecases' ? 'text-red-500' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            Use Cases
                         </button>
                     </nav>
 

@@ -7,11 +7,12 @@ interface TransactionFormProps {
     wallet: WalletState;
     onDepositSuccess?: () => void;
     onTransactionSubmit?: (from: string, to: string, amount: number) => Promise<void>;
+    onWithdrawSubmit?: (address: string, amount: number) => Promise<string | null>;
 }
 
-type FormMode = 'deposit' | 'transfer';
+type FormMode = 'deposit' | 'transfer' | 'withdraw';
 
-export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepositSuccess, onTransactionSubmit }) => {
+export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepositSuccess, onTransactionSubmit, onWithdrawSubmit }) => {
     const [mode, setMode] = useState<FormMode>('deposit');
     const [to, setTo] = useState('');
     const [amount, setAmount] = useState('');
@@ -24,6 +25,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
                 // Leave 10 CSPR for gas on L1
                 const maxDeposit = Math.max(0, wallet.l1Balance - 10);
                 setAmount(maxDeposit.toFixed(2));
+            } else if (mode === 'withdraw') {
+                // For withdraw, use full L2 balance (small fee will be deducted)
+                setAmount(wallet.l2Balance.toFixed(2));
             } else {
                 setAmount((wallet.l2Balance * 0.99).toFixed(2));
             }
@@ -68,6 +72,26 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
         }
     };
 
+    const handleWithdraw = async (val: number) => {
+        // L2 -> L1 withdrawal
+        if (onWithdrawSubmit) {
+            const deployHash = await onWithdrawSubmit(wallet.address || '', val);
+            if (deployHash) {
+                const explorerUrl = `https://testnet.cspr.live/deploy/${deployHash}`;
+                setFeedback({
+                    type: 'success',
+                    msg: `Withdrawal submitted! Hash: ${deployHash.substring(0, 12)}...`,
+                    link: explorerUrl
+                });
+                onDepositSuccess?.(); // Refresh balances
+            } else {
+                setFeedback({ type: 'error', msg: 'Withdrawal failed. Please try again.' });
+            }
+        } else {
+            setFeedback({ type: 'error', msg: 'Withdrawal not available' });
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!amount) return;
@@ -93,7 +117,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
                 setTimeout(() => setFeedback(null), 3000);
                 return;
             }
+        } else if (mode === 'withdraw') {
+            if (val < 1) {
+                setFeedback({ type: 'error', msg: 'Minimum withdrawal is 1 ACCEL' });
+                setTimeout(() => setFeedback(null), 3000);
+                return;
+            }
+            if (val > wallet.l2Balance) {
+                setFeedback({ type: 'error', msg: `Insufficient L2 balance. Available: ${wallet.l2Balance.toFixed(2)} ACCEL` });
+                setTimeout(() => setFeedback(null), 3000);
+                return;
+            }
         } else {
+            // transfer mode
             if (val > wallet.l2Balance) {
                 setFeedback({ type: 'error', msg: `Insufficient L2 funds. Balance: ${wallet.l2Balance}` });
                 setTimeout(() => setFeedback(null), 3000);
@@ -112,6 +148,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
         try {
             if (mode === 'deposit') {
                 await handleDeposit(val);
+            } else if (mode === 'withdraw') {
+                await handleWithdraw(val);
             } else {
                 await handleTransfer(val);
             }
@@ -147,7 +185,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
                 <button
                     type="button"
                     onClick={() => setMode('deposit')}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
                         mode === 'deposit'
                             ? 'bg-red-600 text-white'
                             : 'bg-slate-800 text-slate-400 hover:text-white'
@@ -158,7 +196,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
                 <button
                     type="button"
                     onClick={() => setMode('transfer')}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
                         mode === 'transfer'
                             ? 'bg-red-600 text-white'
                             : 'bg-slate-800 text-slate-400 hover:text-white'
@@ -166,15 +204,26 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
                 >
                     Transfer (L2)
                 </button>
+                <button
+                    type="button"
+                    onClick={() => setMode('withdraw')}
+                    className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
+                        mode === 'withdraw'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                >
+                    Withdraw (L2→L1)
+                </button>
             </div>
 
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <Icons.Send className="text-red-500 w-5 h-5" />
-                    {mode === 'deposit' ? 'Bridge to L2' : 'Transfer Assets'}
+                    <Icons.Send className={mode === 'withdraw' ? 'text-green-500 w-5 h-5' : 'text-red-500 w-5 h-5'} />
+                    {mode === 'deposit' ? 'Bridge to L2' : mode === 'withdraw' ? 'Exit to L1' : 'Transfer Assets'}
                 </h3>
                 <div className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400">
-                    {mode === 'deposit' ? 'L1 → L2' : 'L2 TESTNET'}
+                    {mode === 'deposit' ? 'L1 → L2' : mode === 'withdraw' ? 'L2 → L1' : 'L2 TESTNET'}
                 </div>
             </div>
 
@@ -201,14 +250,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
                 <div className="space-y-2">
                     <div className="flex justify-between items-end">
                         <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider">
-                            {mode === 'deposit' ? 'Deposit Amount (CSPR)' : 'Amount'}
+                            {mode === 'deposit' ? 'Deposit Amount (CSPR)' : mode === 'withdraw' ? 'Withdraw Amount (ACCEL)' : 'Amount'}
                         </label>
                         <button
                             type="button"
                             onClick={handleMax}
-                            className="text-[10px] bg-slate-800 hover:bg-slate-700 text-red-400 px-2 py-0.5 rounded transition-colors"
+                            className={`text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded transition-colors ${
+                                mode === 'withdraw' ? 'text-green-400' : 'text-red-400'
+                            }`}
                         >
-                            MAX: {mode === 'deposit' ? `${Math.max(0, wallet.l1Balance - 10).toFixed(0)} CSPR` : wallet.l2Balance}
+                            MAX: {mode === 'deposit'
+                                ? `${Math.max(0, wallet.l1Balance - 10).toFixed(0)} CSPR`
+                                : `${wallet.l2Balance.toFixed(2)} ACCEL`}
                         </button>
                     </div>
                     <div className="relative group">
@@ -216,9 +269,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
                             type="number"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
-                            placeholder={mode === 'deposit' ? 'Min 5 CSPR' : '0.00'}
+                            placeholder={mode === 'deposit' ? 'Min 5 CSPR' : mode === 'withdraw' ? 'Min 1 ACCEL' : '0.00'}
                             disabled={isSubmitting}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-red-500 transition-colors disabled:opacity-50"
+                            className={`w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:outline-none transition-colors disabled:opacity-50 ${
+                                mode === 'withdraw' ? 'focus:border-green-500' : 'focus:border-red-500'
+                            }`}
                         />
                         <span className="absolute right-4 top-3 text-xs font-bold text-slate-500">
                             {mode === 'deposit' ? 'CSPR' : 'ACCEL'}
@@ -256,17 +311,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
                         className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-lg font-medium transition-all ${
                             isSubmitting || (mode === 'transfer' && !to) || !amount
                             ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                            : mode === 'withdraw'
+                            ? 'bg-green-600 text-white hover:bg-green-500 active:scale-95 shadow-lg shadow-green-900/20 hover:shadow-green-900/40'
                             : 'bg-red-600 text-white hover:bg-red-500 active:scale-95 shadow-lg shadow-red-900/20 hover:shadow-red-900/40'
                         }`}
                     >
                         {isSubmitting ? (
                             <>
                                 <Icons.Processing className="w-4 h-4 animate-spin" />
-                                {mode === 'deposit' ? 'Signing with Wallet...' : 'Processing...'}
+                                {mode === 'deposit' ? 'Signing with Wallet...' : mode === 'withdraw' ? 'Processing Withdrawal...' : 'Processing...'}
                             </>
                         ) : (
                             <>
-                                {mode === 'deposit' ? 'Deposit to L2' : 'Sign & Submit'}
+                                {mode === 'deposit' ? 'Deposit to L2' : mode === 'withdraw' ? 'Withdraw to L1' : 'Sign & Submit'}
                                 <Icons.Transaction className="w-4 h-4" />
                             </>
                         )}
@@ -276,14 +333,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
 
             <div className="mt-auto pt-6 border-t border-slate-800">
                 <div className="flex justify-between items-center text-xs text-slate-500 mb-2">
-                    <span>{mode === 'deposit' ? 'Gas Cost' : 'Sequencer Fee'}</span>
-                    <span>{mode === 'deposit' ? '~5 CSPR' : '0.00001 CSPR'}</span>
+                    <span>{mode === 'deposit' ? 'Gas Cost' : mode === 'withdraw' ? 'Withdrawal Fee' : 'Sequencer Fee'}</span>
+                    <span>{mode === 'deposit' ? '~5 CSPR' : mode === 'withdraw' ? '~5 CSPR (L1 gas)' : '0.00001 CSPR'}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs text-slate-500">
                     <span>Expected Finality</span>
                     <span className="text-green-400 flex items-center gap-1">
                         <Icons.Clock className="w-3 h-3"/>
-                        {mode === 'deposit' ? '~2 min (L1)' : '~2s'}
+                        {mode === 'deposit' ? '~2 min (L1)' : mode === 'withdraw' ? '~2 min (L1)' : '~2s'}
                     </span>
                 </div>
             </div>
