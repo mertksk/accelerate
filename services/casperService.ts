@@ -208,9 +208,10 @@ export class CasperService {
             console.log(`[CasperService] Proof value: ${proofBigInt.toString()}`);
 
             // Build runtime args for the entry point
+            // IMPORTANT: Args must be in alphabetical order to match SDK serialization
             const args = sdk.Args.fromMap({
-                root: rootCL,
-                proof: proofCL
+                proof: proofCL,  // 'p' comes before 'r'
+                root: rootCL
             });
 
             // Get contract hash bytes (32 bytes)
@@ -307,15 +308,16 @@ export class CasperService {
                         hash: contractHashHex,
                         entry_point: 'submit_batch',
                         args: [
-                            ['root', {
-                                bytes: toHex(rootCL.bytes()),
-                                cl_type: 'U512',
-                                parsed: rootBigInt.toString()
-                            }],
+                            // IMPORTANT: Args must be in alphabetical order to match body hash
                             ['proof', {
                                 bytes: toHex(proofCL.bytes()),
                                 cl_type: 'U512',
                                 parsed: proofBigInt.toString()
+                            }],
+                            ['root', {
+                                bytes: toHex(rootCL.bytes()),
+                                cl_type: 'U512',
+                                parsed: rootBigInt.toString()
                             }]
                         ]
                     }
@@ -499,10 +501,12 @@ export class CasperService {
             const contractHashBytes = Buffer.from(contractHashHex, 'hex');
 
             // Build args map for the session wasm
+            // IMPORTANT: Args must be in alphabetical order to match SDK serialization
+            const contract_hash = sdk.CLValue.newCLByteArray(contractHashBytes);
             const args = sdk.Args.fromMap({
-                amount,
-                l2_address,
-                contract_hash: sdk.CLValue.newCLByteArray(contractHashBytes)
+                amount,          // 'a' comes first
+                contract_hash,   // 'c' comes second
+                l2_address       // 'l' comes third
             });
 
             // Build session using ModuleBytes (SDK v5)
@@ -596,20 +600,21 @@ export class CasperService {
                     ModuleBytes: {
                         module_bytes: toHex(wasmBytes),
                         args: [
+                            // IMPORTANT: Args must be in alphabetical order to match body hash
                             ['amount', {
                                 bytes: toHex(amount.bytes()),
                                 cl_type: 'U512',
                                 parsed: amountMotes
                             }],
+                            ['contract_hash', {
+                                bytes: toHex(contract_hash.bytes()),
+                                cl_type: { ByteArray: 32 },
+                                parsed: contractHashHex
+                            }],
                             ['l2_address', {
                                 bytes: toHex(l2_address.bytes()),
                                 cl_type: 'String',
                                 parsed: activeKey
-                            }],
-                            ['contract_hash', {
-                                bytes: toHex(sdk.CLValue.newCLByteArray(contractHashBytes).bytes()),
-                                cl_type: { ByteArray: 32 },
-                                parsed: contractHashHex
                             }]
                         ]
                     }
