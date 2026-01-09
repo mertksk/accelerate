@@ -452,6 +452,7 @@ export class CasperService {
     /**
      * Deposit CSPR into the L2 rollup
      * Calls the deposit entry point on the deployed contract
+     * Uses SDK's Deploy.makeDeploy() for correct body hash computation
      */
     static async deposit(amountMotes: string): Promise<string | null> {
         console.log(`[CasperService] Constructing Deploy for 'deposit'...`);
@@ -465,18 +466,14 @@ export class CasperService {
         }
 
         try {
-            // Import SDK v5.x and blakejs for proper hashing
+            // Import SDK v5.x
             const sdk = await import('casper-js-sdk');
-            const { blake2b } = await import('blakejs');
 
             const activeKey = await provider.getActivePublicKey();
             console.log(`[CasperService] Depositing from: ${activeKey}`);
 
             // Parse public key using SDK v5 API
             const publicKey = sdk.PublicKey.fromHex(activeKey);
-
-            // Use session wasm approach to handle purse access correctly
-            // The session wasm runs in user's context and can access their main purse
 
             // Fetch the client_deposit.wasm session code
             const wasmResponse = await fetch('/client_deposit.wasm');
@@ -487,170 +484,77 @@ export class CasperService {
             const wasmBytes = new Uint8Array(wasmBuffer);
             console.log(`[CasperService] Loaded client_deposit.wasm (${wasmBytes.length} bytes)`);
 
-            // Build args for session wasm: contract_hash, amount, l2_address
-            // The session wasm will handle the purse internally via account::get_main_purse()
-            const amount = sdk.CLValue.newCLUInt512(amountMotes);
-            const l2_address = sdk.CLValue.newCLString(activeKey);
-            console.log(`[CasperService] L2 address to credit: ${activeKey}`);
-
-            // Contract hash as a Key type for the session wasm
-            const contractHashHex = CONTRACT_HASH.replace('hash-', '');
+            // Build args for session wasm
+            const contractHashHex = CONTRACT_HASH.replace('hash-', '').replace('contract-', '');
+            const contractHashBytes = Buffer.from(contractHashHex, 'hex');
             console.log(`[CasperService] Contract hash hex: ${contractHashHex}`);
 
-            // Create contract hash bytes (32 bytes)
-            const contractHashBytes = Buffer.from(contractHashHex, 'hex');
-
-            // Build args map for the session wasm
-            // IMPORTANT: Args must be in alphabetical order to match SDK serialization
+            const amount = sdk.CLValue.newCLUInt512(amountMotes);
             const contract_hash = sdk.CLValue.newCLByteArray(contractHashBytes);
-            const args = sdk.Args.fromMap({
-                amount,          // 'a' comes first
-                contract_hash,   // 'c' comes second
-                l2_address       // 'l' comes third
+            const l2_address = sdk.CLValue.newCLString(activeKey);
+
+            // Build args - SDK handles serialization order
+            const sessionArgs = sdk.Args.fromMap({
+                amount,
+                contract_hash,
+                l2_address
             });
 
-            // Build session using ModuleBytes (SDK v5)
-            const session = new sdk.ModuleBytes(wasmBytes, args);
-            console.log(`[CasperService] Session created (ModuleBytes)`);
+            // Build session as ExecutableDeployItem (ModuleBytes with wasm)
+            const session = sdk.ExecutableDeployItem.newModuleBytes(wasmBytes, sessionArgs);
+            console.log(`[CasperService] Session created`);
 
             // Build payment
             const payment = sdk.ExecutableDeployItem.standardPayment(DEPOSIT_PAYMENT);
             console.log(`[CasperService] Payment created`);
 
-            // Get bytes for body hash computation
-            const sessionBytesRaw = session.bytes();
-            const paymentBytes = payment.bytes();
+            // Build deploy header
+            // Constructor: (chainName, dependencies, gasPrice, timestamp, ttl, account, bodyHash)
+            const timestamp = new sdk.Timestamp(new Date());
+            const ttl = new sdk.Duration(1800000); // 30 minutes in ms
+            const deployHeader = new sdk.DeployHeader(
+                CHAIN_NAME,      // chainName
+                [],              // dependencies
+                1,               // gasPrice
+                timestamp,       // timestamp
+                ttl,             // ttl
+                publicKey        // account
+                // bodyHash is computed by makeDeploy
+            );
+            console.log(`[CasperService] Header created for chain: ${CHAIN_NAME}`);
 
-            // ModuleBytes tag is 0x00
-            const sessionBytes = new Uint8Array([0x00, ...Array.from(sessionBytesRaw)]);
-            console.log(`[CasperService] Session bytes (first 20): ${Buffer.from(sessionBytes.slice(0, 20)).toString('hex')}...`);
+            // Use SDK to create deploy - this computes body hash correctly
+            const deploy = sdk.Deploy.makeDeploy(deployHeader, payment, session);
+            console.log(`[CasperService] Deploy created with hash: ${deploy.hash.toHex()}`);
+            console.log(`[CasperService] Body hash: ${deploy.header.bodyHash?.toHex()}`);
 
-            // Compute correct body_hash: blake2b256(payment || session)
-            const bodyBytes = new Uint8Array([...Array.from(paymentBytes), ...Array.from(sessionBytes)]);
-            const bodyHash = Buffer.from(blake2b(bodyBytes, undefined, 32)).toString('hex');
-            console.log(`[CasperService] Correct body hash: ${bodyHash}`);
+            // Get deploy JSON using SDK's serialization (static method)
+            const deployJson = sdk.Deploy.toJSON(deploy) as any;
+            console.log(`[CasperService] Deploy JSON created`);
 
-            // Create timestamp
-            const timestamp = new Date();
-            const timestampStr = timestamp.toISOString();
-
-            // Helper to convert bytes to hex
-            const toHex = (bytes: Uint8Array) => Buffer.from(bytes).toString('hex');
-
-            // Build header bytes for deploy hash computation
-            const accountBytes = publicKey.bytes();
-            const timestampMs = BigInt(timestamp.getTime());
-            const ttlMs = BigInt(1800000); // 30 minutes in ms
-            const gasPrice = BigInt(1);
-
-            // Serialize header for hashing
-            const headerParts: number[] = [];
-            // Account (public key bytes with length prefix)
-            headerParts.push(...Array.from(accountBytes));
-            // Timestamp (u64 little endian)
-            for (let i = 0; i < 8; i++) headerParts.push(Number((timestampMs >> BigInt(i * 8)) & BigInt(0xff)));
-            // TTL (u64 little endian)
-            for (let i = 0; i < 8; i++) headerParts.push(Number((ttlMs >> BigInt(i * 8)) & BigInt(0xff)));
-            // Gas price (u64 little endian)
-            for (let i = 0; i < 8; i++) headerParts.push(Number((gasPrice >> BigInt(i * 8)) & BigInt(0xff)));
-            // Body hash (32 bytes)
-            const bodyHashBytes = Buffer.from(bodyHash, 'hex');
-            headerParts.push(...Array.from(bodyHashBytes));
-            // Dependencies (empty vec = 4 bytes of zeros for u32 length)
-            headerParts.push(0, 0, 0, 0);
-            // Chain name (string with u32 length prefix)
-            const chainNameBytes = Buffer.from(CHAIN_NAME, 'utf8');
-            const chainNameLen = chainNameBytes.length;
-            headerParts.push(chainNameLen & 0xff, (chainNameLen >> 8) & 0xff, (chainNameLen >> 16) & 0xff, (chainNameLen >> 24) & 0xff);
-            headerParts.push(...Array.from(chainNameBytes));
-
-            const headerBytes = new Uint8Array(headerParts);
-            const deployHash = Buffer.from(blake2b(headerBytes, undefined, 32)).toString('hex');
-            console.log(`[CasperService] Computed deploy hash: ${deployHash}`);
-
-            // Build deploy JSON
-            // We need to be careful with manual construction.
-            // The easiest way is to construct the JSON args manually matching the bytes we just built.
-            
-            const paymentAmountCL = sdk.CLValue.newCLUInt512(DEPOSIT_PAYMENT);
-            const deployObject = {
-                hash: deployHash,
-                header: {
-                    account: activeKey,
-                    timestamp: timestampStr,
-                    ttl: '30m',
-                    gas_price: 1,
-                    body_hash: bodyHash,
-                    dependencies: [],
-                    chain_name: CHAIN_NAME
-                },
-                payment: {
-                    ModuleBytes: {
-                        module_bytes: '',
-                        args: [
-                            ['amount', {
-                                bytes: toHex(paymentAmountCL.bytes()),
-                                cl_type: 'U512',
-                                parsed: DEPOSIT_PAYMENT
-                            }]
-                        ]
-                    }
-                },
-                session: {
-                    ModuleBytes: {
-                        module_bytes: toHex(wasmBytes),
-                        args: [
-                            // IMPORTANT: Args must be in alphabetical order to match body hash
-                            ['amount', {
-                                bytes: toHex(amount.bytes()),
-                                cl_type: 'U512',
-                                parsed: amountMotes
-                            }],
-                            ['contract_hash', {
-                                bytes: toHex(contract_hash.bytes()),
-                                cl_type: { ByteArray: 32 },
-                                parsed: contractHashHex
-                            }],
-                            ['l2_address', {
-                                bytes: toHex(l2_address.bytes()),
-                                cl_type: 'String',
-                                parsed: activeKey
-                            }]
-                        ]
-                    }
-                },
-                approvals: [] as Array<{signer: string, signature: string}>
-            };
-            console.log(`[CasperService] Deploy JSON created (wasm size: ${wasmBytes.length} bytes)`);
-
-            // Sign the deploy hash
+            // Sign the deploy
+            const deployHash = deploy.hash.toHex();
             console.log(`[CasperService] Signing deploy hash: ${deployHash}`);
 
             let signature: string;
             try {
-                // First try the standard sign method with deploy JSON
-                const signResult = await provider.sign(JSON.stringify(deployObject), activeKey);
-                console.log(`[CasperService] Deploy signed via sign():`, signResult);
-                // signResult.signature is Uint8Array, we need signatureHex (hex string)
-                // Also need to prefix with algorithm identifier: 01 = Ed25519, 02 = Secp256k1
+                // Try signing the deploy JSON
+                const signResult = await provider.sign(JSON.stringify(deployJson), activeKey);
+                console.log(`[CasperService] Deploy signed via sign()`);
                 const algoPrefix = activeKey.startsWith('01') ? '01' : '02';
                 signature = algoPrefix + signResult.signatureHex;
-                console.log(`[CasperService] Final signature (${signature.length} chars):`, signature.substring(0, 32) + '...');
             } catch (signError: any) {
                 console.log(`[CasperService] sign() failed, trying signMessage():`, signError?.message);
                 // Fall back to signMessage with the deploy hash
                 const messageResult = await provider.signMessage(deployHash, activeKey);
-                console.log(`[CasperService] Deploy signed via signMessage():`, messageResult);
-                // For Ed25519/Secp256k1, we need to prefix the signature with the algorithm identifier
-                // 01 = Ed25519, 02 = Secp256k1
-                // Use signatureHex (hex string), not signature (Uint8Array)
+                console.log(`[CasperService] Deploy signed via signMessage()`);
                 const algoPrefix = activeKey.startsWith('01') ? '01' : '02';
                 signature = algoPrefix + messageResult.signatureHex;
-                console.log(`[CasperService] Final signature (${signature.length} chars):`, signature);
             }
+            console.log(`[CasperService] Signature: ${signature.substring(0, 32)}...`);
 
-            // Add signature to approvals
-            deployObject.approvals = [{
+            // Add approval to deploy JSON
+            deployJson.approvals = [{
                 signer: activeKey,
                 signature: signature
             }];
@@ -663,7 +567,7 @@ export class CasperService {
                     jsonrpc: '2.0',
                     id: Date.now(),
                     method: 'account_put_deploy',
-                    params: { deploy: deployObject }
+                    params: { deploy: deployJson }
                 })
             });
 
