@@ -18,7 +18,20 @@ import {
     Copy,
     ExternalLink,
     RefreshCw,
-    LogOut
+    LogOut,
+    Code2,
+    Terminal,
+    Zap,
+    Gamepad2,
+    Key,
+    BookOpen,
+    Package,
+    ChevronDown,
+    ChevronRight,
+    Github,
+    MessageCircle,
+    Play,
+    Download
 } from 'lucide-react';
 
 export const Icons = {
@@ -43,5 +56,18 @@ export const Icons = {
     ExternalLink: ExternalLink,
     Refresh: RefreshCw,
     Clock: Clock,
-    Logout: LogOut
+    Logout: LogOut,
+    Code: Code2,
+    Terminal: Terminal,
+    Zap: Zap,
+    Gamepad: Gamepad2,
+    Key: Key,
+    Docs: BookOpen,
+    Package: Package,
+    ChevronDown: ChevronDown,
+    ChevronRight: ChevronRight,
+    Github: Github,
+    Discord: MessageCircle,
+    Play: Play,
+    Download: Download
 };

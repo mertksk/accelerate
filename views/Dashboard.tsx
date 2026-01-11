@@ -179,8 +179,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ wallet }) => {
     }, []);
 
     // Handle transaction form submission
-    const handleTransactionSubmit = async (from: string, to: string, amount: number) => {
-        await createTransaction(from, to, amount);
+    const handleTransactionSubmit = async (from: string, to: string, amount: number, l1DepositHash?: string) => {
+        console.log('[Dashboard] handleTransactionSubmit called:', { from, to, amount, l1DepositHash });
+        try {
+            const result = await createTransaction(from, to, amount, l1DepositHash);
+            console.log('[Dashboard] createTransaction result:', result);
+        } catch (error) {
+            console.error('[Dashboard] createTransaction error:', error);
+        }
     };
 
     // Handle withdrawal from L2 to L1

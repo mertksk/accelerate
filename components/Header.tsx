@@ -4,7 +4,7 @@ import { Icons } from './Icons';
 import { WalletState } from '../types';
 import { ConnectWalletModal } from './ConnectWalletModal';
 
-type TabKey = 'home' | 'dashboard' | 'architecture' | 'usecases';
+type TabKey = 'home' | 'dashboard' | 'architecture' | 'usecases' | 'sdk';
 
 interface HeaderProps {
     activeTab: TabKey;
@@ -69,6 +69,13 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, wallet,
                             className={`text-sm font-medium transition-colors ${activeTab === 'usecases' ? 'text-red-500' : 'text-slate-400 hover:text-white'}`}
                         >
                             Use Cases
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('sdk')}
+                            className={`text-sm font-medium transition-colors flex items-center gap-1 ${activeTab === 'sdk' ? 'text-red-500' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <Icons.Code className="w-4 h-4" />
+                            SDK
                         </button>
                     </nav>
 

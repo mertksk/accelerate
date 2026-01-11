@@ -1,0 +1,53 @@
+{
+  "name": "@accelerate/sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for Casper Accelerate ZK-Rollup",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "casper",
+    "accelerate",
+    "zk-rollup",
+    "layer2",
+    "blockchain",
+    "sdk",
+    "typescript"
+  ],
+  "author": "Casper Accelerate",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/casper-accelerate/sdk"
+  },
+  "homepage": "https://accelerate.casper.network/sdk",
+  "bugs": {
+    "url": "https://github.com/casper-accelerate/sdk/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {},
+  "sideEffects": false
+}

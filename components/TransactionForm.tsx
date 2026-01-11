@@ -6,7 +6,7 @@ import { WalletState } from '../types';
 interface TransactionFormProps {
     wallet: WalletState;
     onDepositSuccess?: () => void;
-    onTransactionSubmit?: (from: string, to: string, amount: number) => Promise<void>;
+    onTransactionSubmit?: (from: string, to: string, amount: number, l1DepositHash?: string) => Promise<void>;
     onWithdrawSubmit?: (address: string, amount: number) => Promise<string | null>;
 }
 
@@ -50,9 +50,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
                 link: explorerUrl
             });
 
-            // Also add to L2 sequencer for tracking via API
+            // Credit L2 balance via sequencer - pass deploy hash for verification
+            console.log('[TransactionForm] About to call onTransactionSubmit, deployHash:', deployHash);
+            console.log('[TransactionForm] onTransactionSubmit exists:', !!onTransactionSubmit);
             if (onTransactionSubmit) {
-                await onTransactionSubmit('L1_DEPOSIT', wallet.address || '', val);
+                console.log('[TransactionForm] Calling onTransactionSubmit with:', {
+                    from: 'L1_BRIDGE',
+                    to: wallet.address,
+                    amount: val,
+                    l1DepositHash: deployHash
+                });
+                await onTransactionSubmit('L1_BRIDGE', wallet.address || '', val, deployHash);
+                console.log('[TransactionForm] onTransactionSubmit completed');
+            } else {
+                console.log('[TransactionForm] WARNING: onTransactionSubmit is undefined!');
             }
 
             // Notify parent to refresh balances
@@ -64,10 +75,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ wallet, onDepo
 
     const handleTransfer = async (val: number) => {
         // L2 transfer via API
+        console.log('[TransactionForm] handleTransfer called:', { from: wallet.address, to, amount: val });
         if (onTransactionSubmit) {
-            await onTransactionSubmit(wallet.address || '0xUnknown', to, val);
-            setFeedback({ type: 'success', msg: 'Transaction Signed & Submitted to Sequencer' });
+            try {
+                console.log('[TransactionForm] Calling onTransactionSubmit for transfer...');
+                await onTransactionSubmit(wallet.address || '0xUnknown', to, val);
+                console.log('[TransactionForm] Transfer submitted successfully');
+                setFeedback({ type: 'success', msg: 'Transaction Signed & Submitted to Sequencer' });
+            } catch (error) {
+                console.error('[TransactionForm] Transfer failed:', error);
+                setFeedback({ type: 'error', msg: 'Transfer failed. Please try again.' });
+            }
         } else {
+            console.log('[TransactionForm] WARNING: onTransactionSubmit is undefined!');
             setFeedback({ type: 'error', msg: 'Transaction submission not available' });
         }
     };

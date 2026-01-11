@@ -51,7 +51,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { from, to, amount, l1DepositHash } = body;
 
+    console.log('[API] POST /api/transactions received:', { from, to, amount, l1DepositHash });
+
     if (!from || !to || amount === undefined) {
+      console.log('[API] Missing required fields');
       return NextResponse.json(
         { success: false, error: 'Missing required fields: from, to, amount' },
         { status: 400 }
@@ -60,14 +63,17 @@ export async function POST(request: NextRequest) {
 
     // Convert amount to BigInt (input should be in CSPR, convert to motes)
     const amountMotes = BigInt(Math.floor(parseFloat(amount) * 1e9));
+    console.log('[API] Amount in motes:', amountMotes.toString());
 
     // Submit transaction via sequencer
+    console.log('[API] Calling sequencer.submitTransaction...');
     const txId = await sequencer.submitTransaction(
       from,
       to,
       amountMotes,
       l1DepositHash
     );
+    console.log('[API] Transaction submitted, txId:', txId);
 
     // Get the created transaction
     const tx = await TransactionDB.getById(txId);

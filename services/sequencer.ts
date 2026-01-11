@@ -148,9 +148,29 @@ class Sequencer {
     // Generate transaction hash
     const txHash = `0x${Date.now().toString(16)}${Math.random().toString(16).substring(2, 10)}`;
 
-    // Ensure accounts exist
-    await stateManager.getOrCreateAccount(fromAddress, amount + BigInt(1000));
-    await stateManager.getOrCreateAccount(toAddress, BigInt(0));
+    // Handle L1 deposits differently (support both L1_BRIDGE and legacy L1_DEPOSIT)
+    const isL1Deposit = (fromAddress === 'L1_BRIDGE' || fromAddress === 'L1_DEPOSIT') && l1DepositHash;
+
+    if (isL1Deposit) {
+      // For L1 deposits: credit the recipient with the deposited amount
+      console.log(`[Sequencer] Processing L1 deposit: ${amount} motes to ${toAddress}`);
+
+      // Ensure system account exists (for foreign key constraint)
+      await stateManager.getOrCreateAccount(fromAddress, BigInt(0));
+
+      // Get or create recipient account
+      const recipient = await stateManager.getOrCreateAccount(toAddress, BigInt(0));
+
+      // Credit the deposit amount to recipient
+      const newBalance = recipient.balance + amount;
+      await stateManager.updateAccountBalance(toAddress, newBalance, false);
+
+      console.log(`[Sequencer] L1 deposit credited: ${toAddress} new balance = ${newBalance}`);
+    } else {
+      // For regular L2 transfers: ensure both accounts exist
+      await stateManager.getOrCreateAccount(fromAddress, amount + BigInt(1000));
+      await stateManager.getOrCreateAccount(toAddress, BigInt(0));
+    }
 
     // Create transaction in database
     const tx = await TransactionDB.create({
@@ -161,8 +181,8 @@ class Sequencer {
       l1DepositHash,
     });
 
-    console.log(`[Sequencer] Transaction submitted: ${txHash}`);
-    observability.log('info', 'Sequencer', 'Transaction submitted', { txHash });
+    console.log(`[Sequencer] Transaction submitted: ${txHash}${isL1Deposit ? ' (L1 Deposit)' : ''}`);
+    observability.log('info', 'Sequencer', 'Transaction submitted', { txHash, isL1Deposit });
 
     // Broadcast update
     wsManager.broadcastTransactionUpdate(tx.id, TransactionStatus.PENDING);

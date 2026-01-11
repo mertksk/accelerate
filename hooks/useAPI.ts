@@ -121,18 +121,25 @@ export function useTransactions() {
   const createTransaction = useCallback(async (
     from: string,
     to: string,
-    amount: number
+    amount: number,
+    l1DepositHash?: string
   ) => {
+    console.log('[useAPI] createTransaction called:', { from, to, amount, l1DepositHash });
+
     const result = await execute('/api/transactions', {
       method: 'POST',
-      body: JSON.stringify({ from, to, amount }),
+      body: JSON.stringify({ from, to, amount, l1DepositHash }),
     });
 
+    console.log('[useAPI] createTransaction result:', result);
+
     if (result && 'transaction' in result) {
+      console.log('[useAPI] Transaction created successfully, refreshing list');
       // Refresh list after creating
       await fetchTransactions();
       return result.transaction as Transaction;
     }
+    console.log('[useAPI] createTransaction failed or returned null');
     return null;
   }, [execute, fetchTransactions]);
 

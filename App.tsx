@@ -4,6 +4,7 @@ import { Home } from './views/Home';
 import { Dashboard } from './views/Dashboard';
 import { Architecture } from './views/Architecture';
 import { UseCases } from './views/UseCases';
+import { GameSDK } from './views/GameSDK';
 import { WalletState } from './types';
 import { CasperService } from './services/casperService';
 
@@ -11,7 +12,7 @@ import { CasperService } from './services/casperService';
 const SIMULATION_ADDRESS = "01a4567b...8f2e";
 
 export default function App() {
-    const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'architecture' | 'usecases'>('home');
+    const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'architecture' | 'usecases' | 'sdk'>('home');
     const [wallet, setWallet] = useState<WalletState>({
         address: null,
         isConnected: false,
@@ -59,6 +60,8 @@ export default function App() {
                 return <Architecture />;
             case 'usecases':
                 return <UseCases />;
+            case 'sdk':
+                return <GameSDK />;
             default:
                 return <Home onConnect={connectWallet} onEnterApp={() => setActiveTab('dashboard')} />;
         }

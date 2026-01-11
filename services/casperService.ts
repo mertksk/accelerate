@@ -538,8 +538,9 @@ export class CasperService {
                 console.log(`[CasperService] Final signature (${signature.length} chars):`, signature.substring(0, 32) + '...');
             } catch (signError: any) {
                 console.log(`[CasperService] sign() failed, trying signMessage():`, signError?.message);
-                // Fall back to signMessage with the deploy hash
-                const messageResult = await provider.signMessage(deploy.hash, activeKey);
+                // Fall back to signMessage with the deploy hash (convert Hash to string)
+                const hashHex = typeof deploy.hash === 'string' ? deploy.hash : deploy.hash.toHex();
+                const messageResult = await provider.signMessage(hashHex, activeKey);
                 console.log(`[CasperService] Deploy signed via signMessage():`, messageResult);
                 const algoPrefix = activeKey.startsWith('01') ? '01' : '02';
                 signature = algoPrefix + messageResult.signatureHex;

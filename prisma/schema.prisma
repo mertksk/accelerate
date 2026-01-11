@@ -119,3 +119,69 @@ model MerkleTreeState {
   treeDepth     Int      @default(16)
   updatedAt     DateTime @updatedAt
 }
+
+// ============================================================================
+// API Key Management for SDK Authentication
+// ============================================================================
+
+model ApiKey {
+  id            String       @id @default(cuid())
+  key           String       @unique  // SHA-256 hashed API key
+  keyPrefix     String       // First 12 chars for identification (e.g., "acc_test_sk_")
+  name          String       // User-friendly name
+
+  // Rate limiting tier
+  tier          ApiKeyTier   @default(FREE)
+
+  // Usage tracking
+  requestCount  BigInt       @default(0)
+  lastRequestAt DateTime?
+
+  // Custom rate limit (requests per minute)
+  rateLimit     Int          @default(60)
+
+  // Permissions
+  permissions   String[]     @default(["read", "write"])
+
+  // Owner info
+  ownerId       String?
+  ownerEmail    String?
+
+  // Status
+  isActive      Boolean      @default(true)
+  expiresAt     DateTime?
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relations
+  usage         ApiKeyUsage[]
+
+  @@index([key])
+  @@index([keyPrefix])
+  @@index([ownerId])
+  @@index([isActive])
+}
+
+enum ApiKeyTier {
+  FREE        // 60 req/min, 1000/day
+  STARTER     // 300 req/min, 10000/day
+  PRO         // 1000 req/min, 100000/day
+  ENTERPRISE  // Custom limits
+}
+
+model ApiKeyUsage {
+  id          String   @id @default(cuid())
+  apiKeyId    String
+  apiKey      ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  endpoint    String
+  method      String
+  statusCode  Int
+  responseMs  Int
+
+  timestamp   DateTime @default(now())
+
+  @@index([apiKeyId, timestamp])
+  @@index([timestamp])
+}
