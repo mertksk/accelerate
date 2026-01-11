@@ -1,25 +1,14 @@
 #![no_std]
 #![no_main]
-#![feature(core_intrinsics)]
 
 extern crate alloc;
 
-#[cfg(not(test))]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
-#[cfg(not(test))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    core::intrinsics::abort()
-}
-
 use casper_contract::contract_api::{runtime, storage};
-use casper_contract::unwrap_or_revert::UnwrapOrRevert;
 use alloc::vec;
 use alloc::string::String;
 use casper_types::{
-    CLType, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints,
+    addressable_entity::{EntityEntryPoint as EntryPoint, EntryPoints},
+    CLType, EntryPointAccess, EntryPointPayment, EntryPointType,
     Parameter, URef, U512,
 };
 
@@ -33,6 +22,7 @@ const ARG_NEW_ROOT: &str = "new_root";
 const ARG_PROOF: &str = "proof";
 const ARG_AMOUNT: &str = "amount";
 const ARG_PURSE: &str = "purse";
+const ARG_L2_ADDRESS: &str = "l2_address";
 
 /// Initialize contract state
 #[no_mangle]
@@ -54,6 +44,7 @@ pub extern "C" fn submit_batch() {
 pub extern "C" fn deposit() {
     let _amount: U512 = runtime::get_named_arg(ARG_AMOUNT);
     let _purse: URef = runtime::get_named_arg(ARG_PURSE);
+    let _l2_address: String = runtime::get_named_arg(ARG_L2_ADDRESS);
     // Stub: will be implemented after deployment
 }
 
@@ -67,7 +58,8 @@ pub extern "C" fn call() {
         vec![],
         CLType::Unit,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
+        EntryPointPayment::Caller,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
@@ -78,7 +70,8 @@ pub extern "C" fn call() {
         ],
         CLType::Unit,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
+        EntryPointPayment::Caller,
     ));
 
     entry_points.add_entry_point(EntryPoint::new(
@@ -86,10 +79,12 @@ pub extern "C" fn call() {
         vec![
             Parameter::new(ARG_AMOUNT, CLType::U512),
             Parameter::new(ARG_PURSE, CLType::URef),
+            Parameter::new(ARG_L2_ADDRESS, CLType::String),
         ],
         CLType::Unit,
         EntryPointAccess::Public,
-        EntryPointType::Contract,
+        EntryPointType::Called,
+        EntryPointPayment::Caller,
     ));
 
     let (contract_hash, _version) = storage::new_contract(
@@ -97,6 +92,7 @@ pub extern "C" fn call() {
         None,
         Some(String::from(CONTRACT_HASH_NAME)),
         Some(String::from(CONTRACT_PACKAGE_HASH_NAME)),
+        None,
     );
 
     runtime::put_key(CONTRACT_HASH_NAME, contract_hash.into());
