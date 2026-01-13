@@ -282,7 +282,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ wallet }) => {
                         <div>
                             <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Contract</div>
                             <a
-                                href={`https://testnet.cspr.live/contract/${contractConfig.contractHash.replace('hash-', '')}`}
+                                href={`https://testnet.cspr.live/contract-package/${contractConfig.contractPackageHash.replace('contract-package-', '')}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"

@@ -201,6 +201,11 @@ class StateManager {
       throw new Error(`[StateManager] Account ${address} not found`);
     }
 
+    // Prevent negative balances
+    if (newBalance < BigInt(0)) {
+      throw new Error(`[StateManager] Cannot set negative balance for ${address}`);
+    }
+
     // Update in-memory state
     state.balance = newBalance;
     if (incrementNonce) {

@@ -167,8 +167,15 @@ class Sequencer {
 
       console.log(`[Sequencer] L1 deposit credited: ${toAddress} new balance = ${newBalance}`);
     } else {
-      // For regular L2 transfers: ensure both accounts exist
-      await stateManager.getOrCreateAccount(fromAddress, amount + BigInt(1000));
+      // For regular L2 transfers: check sender balance first
+      const sender = await stateManager.getAccount(fromAddress);
+      if (!sender) {
+        throw new Error(`Sender account ${fromAddress} does not exist`);
+      }
+      if (sender.balance < amount) {
+        throw new Error(`Insufficient balance: have ${sender.balance}, need ${amount}`);
+      }
+      // Ensure receiver account exists
       await stateManager.getOrCreateAccount(toAddress, BigInt(0));
     }
 

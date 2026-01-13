@@ -2,7 +2,8 @@ export enum TransactionStatus {
     PENDING = 'PENDING',       // Waiting in Mempool
     BATCHED = 'BATCHED',       // Included in a Batch (L2)
     PROVING = 'PROVING',       // ZK Proof being generated
-    FINALIZED = 'FINALIZED'    // Proof Verified on L1
+    FINALIZED = 'FINALIZED',   // Proof Verified on L1
+    FAILED = 'FAILED'          // Transaction failed
 }
 
 export interface Transaction {
