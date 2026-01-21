@@ -31,7 +31,7 @@ const DIRECT_RPC_URL = process.env.NEXT_PUBLIC_NODE_URL || 'https://node.testnet
 const RPC_URL = typeof window !== 'undefined' ? '/api/rpc' : DIRECT_RPC_URL;
 const CHAIN_NAME = process.env.NEXT_PUBLIC_CHAIN_ID || 'casper-test';
 const CONTRACT_HASH = process.env.NEXT_PUBLIC_CONTRACT_HASH || 'hash-97d19d7103e13147bd027cc8fdc25dac74ca454947c24ba0d6a28871827c6524';
-const CONTRACT_PACKAGE_HASH = 'contract-package-3e3e458f59228c8a29e3b9151d89b535b76326ae10b43115b6abe419799f121f';
+const CONTRACT_PACKAGE_HASH = 'contract-package-c881a1cd6daa4a6a2d26c10ab5f9f274fea59c5056b54b8552db804812d127ad';
 
 // Gas costs (in motes: 1 CSPR = 1,000,000,000 motes)
 const SUBMIT_BATCH_PAYMENT = '10000000000'; // 10 CSPR
